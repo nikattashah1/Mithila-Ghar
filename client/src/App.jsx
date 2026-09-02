@@ -15,7 +15,6 @@ import PaymentFailure from './pages/checkout/PaymentFailure';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/account/Dashboard';
-import WalletDashboard from './pages/wallet/WalletDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Wishlist from './pages/Wishlist';
 import About from './pages/About';
@@ -47,7 +46,6 @@ function App() {
           
           <Route element={<ProtectedRoute />}>
              <Route path="/dashboard" element={<Dashboard />} />
-             <Route path="/wallet" element={<WalletDashboard />} />
           </Route>
           
           <Route element={<ProtectedRoute adminOnly={true} />}>

@@ -45,7 +45,7 @@ const Checkout = () => {
     phone: user?.phone || ''
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('CARD'); // 'CARD', 'ESEWA', 'WALLET'
+  const [paymentMethod, setPaymentMethod] = useState('CARD'); // 'CARD', 'ESEWA', 'COD'
 
   useEffect(() => {
     if (!cart || cart.items.length === 0) {
@@ -66,7 +66,7 @@ const Checkout = () => {
     e.preventDefault();
     setLoading(true);
     const name = user?.name || shippingAddress.name || 'Guest';
-    const email = user?.email || shippingAddress.email || 'guest@example.com';
+    const email = shippingAddress.email || user?.email || 'guest@example.com';
     const city = shippingAddress.city || 'Kathmandu';
     const province = shippingAddress.province || 'Bagmati';
 
@@ -121,12 +121,10 @@ const Checkout = () => {
       });
 
       const { orderId } = res.data;
-      if (paymentMethod === 'WALLET') {
-        navigate(`/payment-success?orderId=${orderId}`);
-      } else if (paymentMethod === 'CARD') {
+      if (paymentMethod === 'CARD') {
         navigate(`/mock-card-test?orderId=${orderId}`);
       } else {
-        navigate(`/payment-success?orderId=${orderId}`);
+        navigate(`/payment-success?orderId=${orderId}&payment=cod`);
       }
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to checkout', 'error');
@@ -184,8 +182,8 @@ const Checkout = () => {
                 <span>eSewa</span>
               </label>
               <label className="payment-option">
-                <input type="radio" value="WALLET" checked={paymentMethod==='WALLET'} onChange={(e) => setPaymentMethod(e.target.value)} />
-                <span>Wallet Balance</span>
+                <input type="radio" value="COD" checked={paymentMethod==='COD'} onChange={(e) => setPaymentMethod(e.target.value)} />
+                <span>Cash on Delivery</span>
               </label>
             </div>
           </form>

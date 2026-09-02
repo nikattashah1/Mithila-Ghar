@@ -1,6 +1,7 @@
 const { getDb } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const validator = require('validator');
+const { sendContactMessageEmail } = require('../services/emailService');
 
 const subscribe = asyncHandler(async (req, res) => {
   const { email, name } = req.body;
@@ -62,10 +63,21 @@ const contact = asyncHandler(async (req, res) => {
   }
 
   const db = await getDb();
+  const contactMessage = {
+    name: name.trim(),
+    email: String(email).toLowerCase(),
+    subject: req.body.subject,
+    message: message.trim()
+  };
   await db.run(
     'INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)',
-    [name.trim(), String(email).toLowerCase(), message.trim()]
+    [contactMessage.name, contactMessage.email, contactMessage.message]
   );
+
+  const emailResult = await sendContactMessageEmail(contactMessage);
+  if (!emailResult.sent) {
+    return res.status(503).json({ message: 'Message saved, but email notification could not be sent.' });
+  }
 
   res.json({ message: 'Your message has been received. We will get back to you soon!' });
 });

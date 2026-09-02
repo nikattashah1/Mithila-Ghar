@@ -86,10 +86,19 @@ const me = asyncHandler(async (req, res) => {
 });
 
 const updateMe = asyncHandler(async (req, res) => {
-  const { name } = req.body;
+  const { name, currentPassword, newPassword } = req.body;
   const db = await getDb();
   if (name) {
     await db.run('UPDATE users SET name = ? WHERE id = ?', [name, req.user.id]);
+  }
+  if (newPassword) {
+    if (!currentPassword || !(await bcrypt.compare(currentPassword, (await db.get('SELECT password_hash FROM users WHERE id = ?', [req.user.id])).password_hash))) {
+      return res.status(400).json({ message: 'Current password is incorrect.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+    await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(newPassword, 10), req.user.id]);
   }
   const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id]);
   res.json({ user: { _id: user.id, ...user } });

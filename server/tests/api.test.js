@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const app = require('../app');
 const { seedDatabase, DEMO_PASSWORD } = require('../seed/seed');
 const { getDb } = require('../config/db');
+const { sendShippingConfirmationEmail } = require('../services/emailService');
 
 let mongod;
 
@@ -81,6 +82,22 @@ describe('auth', () => {
       .get('/api/admin/users')
       .set('Authorization', `Bearer ${customer.body.token}`);
     assert.equal(admin.status, 403);
+  });
+});
+
+describe('shipping confirmation email', () => {
+  test('sends a confirmation email to the customer when shipping is confirmed', async () => {
+    const result = await sendShippingConfirmationEmail({
+      shipping_email: 'customer1@mithilaghar.local',
+      order_number: 'ORD-EMAIL-TEST',
+      shipping_name: 'Sita Sharma',
+      total: 2499.99,
+      status: 'Shipped'
+    });
+
+    assert.equal(result.sent, true);
+    assert.equal(result.to, 'customer1@mithilaghar.local');
+    assert.match(result.subject, /Shipped|shipping/i);
   });
 });
 

@@ -17,6 +17,12 @@ const env = {
   esewaSecretKey: process.env.ESEWA_SECRET_KEY || '8gBm/:&EnhH.1/q',
   esewaPaymentUrl: process.env.ESEWA_PAYMENT_URL || 'https://rc-epay.esewa.com.np/api/epay/main/v2/form',
   esewaStatusUrl: process.env.ESEWA_STATUS_URL || 'https://rc.esewa.com.np/api/epay/transaction/status/',
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpSecure: String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  smtpFrom: process.env.SMTP_FROM || 'noreply@mithilaghar.local',
   shippingFee: Number(process.env.SHIPPING_FEE || 150),
   freeShippingThreshold: Number(process.env.FREE_SHIPPING_THRESHOLD || 2000)
 };

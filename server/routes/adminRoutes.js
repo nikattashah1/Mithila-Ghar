@@ -13,7 +13,6 @@ router.get('/orders', admin.adminOrders);
 router.put('/orders/:id', admin.updateOrderStatus);
 router.get('/users', admin.adminUsers);
 router.get('/payments', admin.adminPayments);
-router.get('/wallet-transactions', admin.adminWalletTx);
 router.get('/marketing', admin.adminMarketing);
 router.get('/recommendations', admin.adminRecommendations);
 router.get('/audit-logs', admin.adminAudit);

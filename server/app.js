@@ -10,7 +10,6 @@ const authRoutes = require('./routes/authRoutes');
 const catalogRoutes = require('./routes/catalogRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
-const walletRoutes = require('./routes/walletRoutes');
 const miscRoutes = require('./routes/miscRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const { sitemap, robots } = require('./controllers/miscController');
@@ -52,7 +51,6 @@ const authLimiter = rateLimit({
 app.use('/api', generalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/wallet/transfer', rateLimit({ windowMs: 15 * 60 * 1000, max: env.nodeEnv === 'test' ? 1000 : 20 }));
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, name: 'Mithila Ghar API', testMode: true });
@@ -62,7 +60,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api', checkoutRoutes);
-app.use('/api/wallet', walletRoutes);
 app.use('/api', miscRoutes);
 app.use('/api/admin', adminRoutes);
 app.get('/sitemap.xml', sitemap);

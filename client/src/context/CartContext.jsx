@@ -4,8 +4,19 @@ import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
+const normalizeCartPayload = (payload = {}) => {
+  const cart = payload.cart || payload;
+  const items = Array.isArray(cart?.items) ? cart.items : [];
+
+  return {
+    items,
+    totalPrice: Number(cart?.subtotal ?? cart?.totalPrice ?? 0),
+    subtotal: Number(cart?.subtotal ?? cart?.totalPrice ?? 0)
+  };
+};
+
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(null);
+  const [cart, setCart] = useState({ items: [], totalPrice: 0, subtotal: 0 });
   const [cartLoading, setCartLoading] = useState(false);
   const { user } = useAuth();
 
@@ -13,9 +24,10 @@ export const CartProvider = ({ children }) => {
     setCartLoading(true);
     try {
       const res = await api.get('/cart');
-      setCart({ items: res.data.items || [], totalPrice: res.data.subtotal || 0 });
+      setCart(normalizeCartPayload(res.data));
     } catch (err) {
       console.error('Failed to fetch cart', err);
+      setCart({ items: [], totalPrice: 0, subtotal: 0 });
     } finally {
       setCartLoading(false);
     }
@@ -26,10 +38,13 @@ export const CartProvider = ({ children }) => {
   }, [user]);
 
   const addToCart = async (product, quantity = 1) => {
-    let productId = typeof product === 'object' ? (product.id || product._id) : product;
+    const productId = typeof product === 'object' ? (product.id || product._id) : product;
+
     try {
       const res = await api.post('/cart', { productId, quantity });
-      setCart({ items: res.data.items || [], totalPrice: res.data.subtotal || 0 });
+      const nextCart = normalizeCartPayload(res.data);
+      setCart(nextCart);
+      return nextCart;
     } catch (err) {
       console.error('Failed to add to cart', err);
       throw err;

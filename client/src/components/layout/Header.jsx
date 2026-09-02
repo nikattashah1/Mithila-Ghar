@@ -9,6 +9,7 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const cartCount = cart?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+  const isAdmin = user?.role === 'admin';
 
   return (
     <header className="site-header">
@@ -19,29 +20,34 @@ const Header = () => {
         </Link>
 
         <nav className={`nav ${mobileOpen ? 'open' : ''}`}>
-          <NavLink to="/" onClick={() => setMobileOpen(false)}>Home</NavLink>
-          <NavLink to="/shop" onClick={() => setMobileOpen(false)}>Shop</NavLink>
-          <NavLink to="/about" onClick={() => setMobileOpen(false)}>About</NavLink>
-          <NavLink to="/contact" onClick={() => setMobileOpen(false)}>Contact</NavLink>
+          {isAdmin ? (
+            <NavLink to="/admin" onClick={() => setMobileOpen(false)}>Admin Dashboard</NavLink>
+          ) : (
+            <>
+              <NavLink to="/" onClick={() => setMobileOpen(false)}>Home</NavLink>
+              <NavLink to="/shop" onClick={() => setMobileOpen(false)}>Shop</NavLink>
+              <NavLink to="/about" onClick={() => setMobileOpen(false)}>About</NavLink>
+              <NavLink to="/contact" onClick={() => setMobileOpen(false)}>Contact</NavLink>
+            </>
+          )}
         </nav>
 
         <div className="header-actions">
-          <form className="search-form" action="/shop">
-            <input type="text" name="q" placeholder="Search products..." />
-            <button type="submit" className="icon-btn search-btn" aria-label="Search">⌕</button>
-          </form>
-
-          <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">♡</Link>
-
-          <Link to="/cart" className="icon-btn cart-btn" aria-label="Cart">
-            🛒
-            {cartCount > 0 && <span className="badge">{cartCount}</span>}
-          </Link>
+          {!isAdmin && <>
+            <form className="search-form" action="/shop">
+              <input type="text" name="q" placeholder="Search products..." />
+              <button type="submit" className="icon-btn search-btn" aria-label="Search">⌕</button>
+            </form>
+            <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">♡</Link>
+            <Link to="/cart" className="icon-btn cart-btn" aria-label="Cart">
+              🛒
+              {cartCount > 0 && <span className="badge">{cartCount}</span>}
+            </Link>
+          </>}
 
           {user ? (
             <>
-              <Link to="/dashboard" className="icon-btn">My Account</Link>
-              <Link to="/wallet" className="icon-btn">Wallet</Link>
+              <Link to={isAdmin ? '/admin' : '/dashboard'} className="icon-btn">{isAdmin ? 'Admin Profile' : 'My Account'}</Link>
               <button onClick={logout} className="icon-btn" style={{border: 'none', background: 'transparent'}}>Logout</button>
             </>
           ) : (

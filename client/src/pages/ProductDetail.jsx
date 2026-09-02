@@ -34,8 +34,12 @@ const ProductDetail = () => {
   const price = product.discountPrice || product.price;
 
   const handleAddToCart = async () => {
-    await addToCart(product._id, qty);
-    addToast('Added to cart', 'success');
+    try {
+      await addToCart(product._id, qty);
+      addToast(`Added ${qty} item${qty > 1 ? 's' : ''} to cart`, 'success');
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Unable to add to cart', 'error');
+    }
   };
 
   const usageText = product.usage_instructions || 'Use this Mithila product as part of daily rituals, gifting, celebration, or home decoration.';
@@ -75,11 +79,7 @@ const ProductDetail = () => {
           <button className="btn" onClick={handleAddToCart} disabled={product.stock <= 0}>Add to Cart</button>
           <button
             className="btn ghost"
-            onClick={async () => {
-              const ok = await addToWishlist(product);
-              if (ok) addToast('Saved to wishlist', 'success');
-            }}
-            disabled={product.stock <= 0}
+            onClick={() => addToWishlist(product)}
           >
             Save to Wishlist
           </button>

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 const WishlistContext = createContext();
 
@@ -18,6 +19,7 @@ export const WishlistProvider = ({ children }) => {
   const [wishlist, setWishlist] = useState({ items: [] });
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const { user } = useAuth();
+  const { addToast } = useToast();
 
   const fetchWishlist = useCallback(async () => {
     if (!user) {
@@ -43,20 +45,14 @@ export const WishlistProvider = ({ children }) => {
 
   const addToWishlist = useCallback(async (product) => {
     if (!user) {
-      alert('Please login to use wishlist');
+      addToast('Please login to use wishlist', 'error');
       return false;
     }
 
     const productId = normalizeProductId(product);
-    const stock = typeof product === 'object' ? Number(product.stock ?? 0) : 0;
 
     if (!productId) {
-      alert('Unable to add this product to wishlist.');
-      return false;
-    }
-
-    if (stock <= 0) {
-      alert('This product is currently out of stock.');
+      addToast('Unable to add this product to wishlist.', 'error');
       return false;
     }
 
@@ -64,14 +60,15 @@ export const WishlistProvider = ({ children }) => {
       const payload = { productId: Number.isFinite(Number(productId)) ? Number(productId) : productId };
       await api.post('/wishlist', payload);
       await fetchWishlist();
+      addToast('Saved to wishlist', 'success');
       return true;
     } catch (err) {
       const message = err?.response?.data?.message || 'Failed to add to wishlist';
-      alert(message);
+      addToast(message, 'error');
       console.error('Failed to add to wishlist', err);
       return false;
     }
-  }, [user, fetchWishlist]);
+  }, [user, fetchWishlist, addToast]);
 
   const removeFromWishlist = useCallback(async (wishItemId) => {
     if (!user) return;

@@ -38,9 +38,8 @@ const addToWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.body;
   if (!productId) return res.status(400).json({ message: 'Product ID is required.' });
 
-  const product = await db.get('SELECT stock FROM products WHERE id = ?', [productId]);
+  const product = await db.get('SELECT id FROM products WHERE id = ?', [productId]);
   if (!product) return res.status(404).json({ message: 'Product not found.' });
-  if (product.stock <= 0) return res.status(400).json({ message: 'This product is currently out of stock.' });
 
   const existing = await db.get('SELECT * FROM wishlist_items WHERE user_id = ? AND product_id = ?', [req.user.id, productId]);
   if (!existing) {

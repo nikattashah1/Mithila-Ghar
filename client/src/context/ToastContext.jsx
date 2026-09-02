@@ -2,12 +2,28 @@ import React, { createContext, useState, useContext } from 'react';
 
 const ToastContext = createContext();
 
+const toastStyles = {
+  success: {
+    className: 'toast success',
+    icon: '✓'
+  },
+  error: {
+    className: 'toast error',
+    icon: '!'
+  },
+  info: {
+    className: 'toast info',
+    icon: 'i'
+  }
+};
+
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = 'info') => {
     const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    const toastType = toastStyles[type] ? type : 'info';
+    setToasts((prev) => [...prev, { id, message, type: toastType }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3500);
@@ -16,25 +32,16 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div style={{ position: 'fixed', top: '18px', right: '18px', zIndex: 2000, display: 'grid', gap: '10px' }}>
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            style={{
-              minWidth: '220px',
-              maxWidth: '320px',
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: t.type === 'error' ? '#9c2b1a' : '#2f6b4f',
-              color: '#fff',
-              borderLeft: '4px solid rgba(255,255,255,0.8)',
-              boxShadow: '0 12px 30px rgba(25, 18, 13, 0.18)',
-              fontWeight: 600
-            }}
-          >
-            {t.message}
-          </div>
-        ))}
+      <div className="toast-wrap" aria-live="polite" aria-atomic="true">
+        {toasts.map((t) => {
+          const style = toastStyles[t.type] || toastStyles.info;
+          return (
+            <div key={t.id} className={style.className} role="status">
+              <span className="toast-icon">{style.icon}</span>
+              <span>{t.message}</span>
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

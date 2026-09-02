@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { getDb } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const env = require('../config/env');
-const { ensureWallet } = require('../services/walletService');
+const { sendOrderPlacedEmail } = require('../services/emailService');
 
 function generateOrderNumber() {
   return `MG-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -27,7 +27,7 @@ function calculateShippingFee(city = '', province = '') {
   return 100;
 }
 
-// Minimal simulated checkout flow that processes either Dummy Card or Wallet Payments
+// Minimal checkout flow for card and cash-on-delivery orders.
 const processCheckout = asyncHandler(async (req, res) => {
   const { paymentMethod, shippingDetails, cardDetails } = req.body;
   if (!paymentMethod || !shippingDetails) {
@@ -62,25 +62,8 @@ const processCheckout = asyncHandler(async (req, res) => {
   await db.run('BEGIN TRANSACTION');
 
   try {
-    let paymentStatus = 'completed';
+    const paymentStatus = paymentMethod === 'COD' ? 'pending' : 'completed';
     let transactionReference = `TXN-\${Date.now()}`;
-    
-    // Process Wallet Payment
-    if (paymentMethod === 'WALLET') {
-      const wallet = await ensureWallet(req.user.id);
-      if (wallet.balance < total) {
-        await db.run('ROLLBACK');
-        return res.status(400).json({ message: 'Insufficient wallet balance.' });
-      }
-      
-      await db.run('UPDATE wallets SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [total, wallet.id]);
-      
-      await db.run(
-        `INSERT INTO wallet_transactions (wallet_id, sender_user_id, type, amount, status, description, reference)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [wallet.id, req.user.id, 'PURCHASE', total, 'completed', 'Order Payment', transactionReference]
-      );
-    }
     
     const orderNumber = generateOrderNumber();
     
@@ -88,7 +71,7 @@ const processCheckout = asyncHandler(async (req, res) => {
     const orderResult = await db.run(
       `INSERT INTO orders (user_id, order_number, subtotal, shipping, total, status, payment_status, payment_method, shipping_name, shipping_email, shipping_phone, shipping_address)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, orderNumber, subtotal, shipping, total, 'processing', paymentStatus, paymentMethod, 
+      [req.user.id, orderNumber, subtotal, shipping, total, 'processing', paymentStatus, paymentMethod,
        shippingDetails.name, shippingDetails.email, shippingDetails.phone, shippingDetails.address]
     );
     const orderId = orderResult.lastID;
@@ -115,17 +98,20 @@ const processCheckout = asyncHandler(async (req, res) => {
     // Clear cart
     await db.run('DELETE FROM cart_items WHERE user_id = ?', [req.user.id]);
     
-    // Because I made a mistake above referencing user_id in wallet_transactions (which doesn't exist, I need to fix it here).
-    if (paymentMethod === 'WALLET') {
-      const wallet = await db.get('SELECT * FROM wallets WHERE user_id = ?', [req.user.id]);
-      await db.run(
-        `INSERT INTO wallet_transactions (wallet_id, sender_user_id, type, amount, status, description, reference) 
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [wallet.id, req.user.id, 'PURCHASE', total, 'completed', `Order \${orderNumber} Payment`, transactionReference]
-      );
-    }
-    
     await db.run('COMMIT');
+
+    try {
+      await sendOrderPlacedEmail({
+        shipping_email: shippingDetails.email,
+        shipping_name: shippingDetails.name,
+        order_number: orderNumber,
+        total,
+        status: 'Placed'
+      });
+    } catch (mailError) {
+      console.error('Failed to send order placement email:', mailError);
+    }
+
     res.status(201).json({ message: 'Order created', orderId, orderNumber });
   } catch (err) {
     await db.run('ROLLBACK');
@@ -220,18 +206,35 @@ const createEsewaPayment = asyncHandler(async (req, res) => {
 });
 
 const handleEsewaSuccess = asyncHandler(async (req, res) => {
-  const orderId = req.query.orderId;
+  const rawOrderId = String(req.query.orderId || '').split('?')[0];
+  const orderId = rawOrderId && /^\d+$/.test(rawOrderId) ? Number(rawOrderId) : null;
   if (orderId) {
     const db = await getDb();
+    const order = await db.get('SELECT * FROM orders WHERE id = ?', [orderId]);
+
     await db.run(
       'UPDATE orders SET payment_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ['completed', 'processing', Number(orderId)]
+      ['completed', 'processing', orderId]
     );
     await db.run(
       'UPDATE payments SET status = ?, transaction_reference = ? WHERE order_id = ?',
-      ['completed', `ESEWA-${Date.now()}`, Number(orderId)]
+      ['completed', `ESEWA-${Date.now()}`, orderId]
     );
-    await db.run('DELETE FROM cart_items WHERE user_id = ?', [req.user ? req.user.id : 0]);
+    await db.run('DELETE FROM cart_items WHERE user_id = ?', [order?.user_id || req.user?.id || 0]);
+
+    if (order && order.shipping_email) {
+      try {
+        await sendOrderPlacedEmail({
+          shipping_email: order.shipping_email,
+          shipping_name: order.shipping_name,
+          order_number: order.order_number,
+          total: order.total,
+          status: 'Placed'
+        });
+      } catch (mailError) {
+        console.error('Failed to send eSewa order confirmation email:', mailError);
+      }
+    }
   }
 
   const clientUrl = `${env.clientUrl}/payment-success?payment=esewa${orderId ? `&orderId=${orderId}` : ''}`;

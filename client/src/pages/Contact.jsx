@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
+import api from '../services/api';
 
 const Contact = () => {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [status, setStatus] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('Submitting...');
-    // Mocking an API call
-    setTimeout(() => {
-       setStatus('success');
-       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 1000);
+    try {
+      await api.post('/contact', formData);
+      setStatus('success');
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (error) {
+      setStatus(error.response?.data?.message || 'Unable to send message. Please try again.');
+    }
   };
 
   return (
@@ -35,6 +38,7 @@ const Contact = () => {
              <button type="submit" className="btn" disabled={status==='Submitting...'} style={{marginTop: '16px'}}>
                {status === 'Submitting...' ? 'Sending...' : 'Send Message'}
              </button>
+             {status && status !== 'Submitting...' && status !== 'success' && <p style={{color: 'var(--red)'}}>{status}</p>}
            </form>
         )}
       </div>

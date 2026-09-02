@@ -1,16 +1,16 @@
 const { getDb } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
+const { sendShippingConfirmationEmail, shouldSendShippingEmail, sendRestockNotificationEmail } = require('../services/emailService');
 
 const dashboard = asyncHandler(async (req, res) => {
   const db = await getDb();
 
-  const [users, products, orders, paidOrders, payments, walletTx, subscribers, productViews, addToCart] = await Promise.all([
+  const [users, products, orders, paidOrders, payments, subscribers, productViews, addToCart] = await Promise.all([
     db.get('SELECT COUNT(*) as count FROM users'),
     db.get('SELECT COUNT(*) as count FROM products'),
     db.get('SELECT COUNT(*) as count FROM orders'),
     db.all('SELECT total FROM orders WHERE payment_status = ?', ['completed']),
     db.get('SELECT COUNT(*) as count FROM payments WHERE status = ?', ['completed']),
-    db.get('SELECT COUNT(*) as count FROM wallet_transactions'),
     db.get('SELECT COUNT(*) as count FROM marketing_subscriptions'),
     db.get('SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?', ['product_view']),
     db.get('SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?', ['add_to_cart'])
@@ -39,7 +39,6 @@ const dashboard = asyncHandler(async (req, res) => {
       totalOrders: orders.count,
       totalRevenue: revenue,
       successfulPayments: payments.count,
-      walletTransactions: walletTx.count,
       newsletterSubscribers: subscribers.count,
       productViews: productViews.count,
       addToCartEvents: addToCart.count
@@ -113,6 +112,24 @@ const updateProduct = asyncHandler(async (req, res) => {
     [updates.name, updates.slug, updates.description, updates.usage_instructions, updates.price, updates.stock, updates.image, updates.featured, updates.active, updates.category_id, req.params.id]
   );
 
+  if (Number(existing.stock) <= 0 && updates.stock > 0) {
+    const savedCustomers = await db.all(
+      `SELECT u.name AS customer_name, u.email AS customer_email
+       FROM wishlist_items w
+       JOIN users u ON u.id = w.user_id
+       WHERE w.product_id = ?`,
+      [req.params.id]
+    );
+    for (const customer of savedCustomers) {
+      await sendRestockNotificationEmail({
+        customerName: customer.customer_name,
+        customerEmail: customer.customer_email,
+        name: updates.name,
+        price: updates.price
+      });
+    }
+  }
+
   const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
   res.json({ product });
 });
@@ -136,13 +153,37 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   const order = await db.get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
   if (!order) return res.status(404).json({ message: 'Order not found.' });
 
-  const { orderStatus } = req.body || {};
-  if (orderStatus) {
-    await db.run('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [orderStatus, req.params.id]);
+  const { orderStatus, status: incomingStatus } = req.body || {};
+  const nextStatusValue = incomingStatus ?? orderStatus;
+  const previousStatus = order.status;
+  let emailResult = null;
+
+  if (nextStatusValue) {
+    const nextStatus = String(nextStatusValue).trim();
+    const allowedStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
+    if (!allowedStatuses.includes(nextStatus.toLowerCase())) {
+      return res.status(400).json({ message: 'Invalid order status.' });
+    }
+    await db.run('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [nextStatus, req.params.id]);
+
+    const shouldSend = shouldSendShippingEmail(nextStatus) && !shouldSendShippingEmail(previousStatus);
+
+    if (shouldSend) {
+      emailResult = await sendShippingConfirmationEmail({
+        shipping_email: order.shipping_email,
+        shipping_name: order.shipping_name,
+        order_number: order.order_number,
+        total: order.total,
+        status: nextStatus
+      });
+    }
   }
 
   const updated = await db.get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
-  res.json({ order: updated });
+  res.json({
+    order: updated,
+    email: emailResult || null
+  });
 });
 
 const adminUsers = asyncHandler(async (req, res) => {

@@ -22,8 +22,9 @@ const Login = () => {
       login(res.data.user);
       
       const params = new URLSearchParams(window.location.search);
-      const redirect = params.get('redirect') || '/dashboard';
-      navigate(redirect);
+      const requestedRedirect = params.get('redirect') || '/dashboard';
+      const redirect = requestedRedirect.startsWith('/') ? requestedRedirect : `/${requestedRedirect}`;
+      navigate(params.has('redirect') ? redirect : (res.data.user?.role === 'admin' ? '/admin' : '/dashboard'));
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your email and password.');
     } finally {
