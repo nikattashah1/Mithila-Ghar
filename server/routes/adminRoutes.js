@@ -1,0 +1,22 @@
+const express = require('express');
+const admin = require('../controllers/adminController');
+const { protect, authorize } = require('../middleware/auth');
+
+const router = express.Router();
+router.use(protect, authorize('admin'));
+router.get('/analytics', admin.dashboard);
+router.get('/products', admin.adminProducts);
+router.post('/products', admin.createProduct);
+router.put('/products/:id', admin.updateProduct);
+router.delete('/products/:id', admin.deleteProduct);
+router.get('/orders', admin.adminOrders);
+router.put('/orders/:id', admin.updateOrderStatus);
+router.get('/users', admin.adminUsers);
+router.get('/payments', admin.adminPayments);
+router.get('/wallet-transactions', admin.adminWalletTx);
+router.get('/marketing', admin.adminMarketing);
+router.get('/recommendations', admin.adminRecommendations);
+router.get('/audit-logs', admin.adminAudit);
+router.get('/contacts', admin.adminContacts);
+router.get('/categories', admin.adminCategories);
+module.exports = router;

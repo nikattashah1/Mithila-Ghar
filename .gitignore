@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+coverage/
+.DS_Store
+Thumbs.db
+uploads/
+.vscode/
+*.tmp
+server/.env
+client/.env
+client/.env.local
+.mongodb-memory-server/
+data/mongo/
