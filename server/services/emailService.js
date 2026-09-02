@@ -180,12 +180,19 @@ async function sendRestockNotificationEmail(product = {}) {
   });
 }
 
+async function sendPasswordResetEmail({ email, name, resetUrl }) {
+  const subject = 'Reset your Mithila Ghar password';
+  const text = [`Hello ${name || 'Customer'},`, '', `Use this link to reset your password: ${resetUrl}`, 'This link expires in 30 minutes and can be used only once.', '', 'If you did not request this, you can ignore this email.'].join('\n');
+  return sendEmail({ to: email, subject, text, html: `<p>Hello ${name || 'Customer'},</p><p>Use this link to reset your Mithila Ghar password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>This link expires in 30 minutes and can be used only once.</p>` });
+}
+
 module.exports = {
   sendEmail,
   sendOrderPlacedEmail,
   sendShippingConfirmationEmail,
   sendContactMessageEmail,
   sendRestockNotificationEmail,
+  sendPasswordResetEmail,
   shouldSendShippingEmail,
   normalizeStatus
 };

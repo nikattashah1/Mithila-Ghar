@@ -166,6 +166,11 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     }
     await db.run('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [nextStatus, req.params.id]);
 
+    if (nextStatus.toLowerCase() === 'completed' && order.payment_method === 'COD') {
+      await db.run('UPDATE orders SET payment_status = ? WHERE id = ?', ['completed', req.params.id]);
+      await db.run('UPDATE payments SET status = ? WHERE order_id = ?', ['completed', req.params.id]);
+    }
+
     const shouldSend = shouldSendShippingEmail(nextStatus) && !shouldSendShippingEmail(previousStatus);
 
     if (shouldSend) {
@@ -190,6 +195,20 @@ const adminUsers = asyncHandler(async (req, res) => {
   const db = await getDb();
   const users = await db.all('SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC');
   res.json({ users });
+});
+
+const deleteUser = asyncHandler(async (req, res) => {
+  const db = await getDb();
+  const userId = Number(req.params.id);
+  if (!Number.isInteger(userId)) return res.status(400).json({ message: 'Invalid user ID.' });
+  if (userId === req.user.id) return res.status(400).json({ message: 'You cannot delete your own admin account.' });
+
+  const user = await db.get('SELECT id, role FROM users WHERE id = ?', [userId]);
+  if (!user) return res.status(404).json({ message: 'User not found.' });
+  if (user.role === 'admin') return res.status(400).json({ message: 'Admin accounts cannot be deleted here.' });
+
+  await db.run('DELETE FROM users WHERE id = ?', [userId]);
+  res.json({ message: 'User deleted successfully.' });
 });
 
 const adminPayments = asyncHandler(async (req, res) => {
@@ -254,6 +273,7 @@ module.exports = {
   adminOrders,
   updateOrderStatus,
   adminUsers,
+  deleteUser,
   adminPayments,
   adminWalletTx,
   adminMarketing,

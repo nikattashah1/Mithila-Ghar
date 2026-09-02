@@ -7,6 +7,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,14 +46,16 @@ const AdminDashboard = () => {
 
   const fetchAdminData = async () => {
     try {
-      const [productsRes, contactsRes, usersRes] = await Promise.all([
+      const [productsRes, contactsRes, usersRes, categoriesRes] = await Promise.all([
         api.get('/admin/products'),
         api.get('/admin/contacts'),
-        api.get('/admin/users')
+        api.get('/admin/users'),
+        api.get('/admin/categories')
       ]);
       setProducts(productsRes.data.products || []);
       setContacts(contactsRes.data.messages || []);
       setUsers(usersRes.data.users || []);
+      setCategories(categoriesRes.data.categories || []);
     } catch (err) {
       console.error(err);
     }
@@ -120,6 +123,7 @@ const AdminDashboard = () => {
   };
 
   const deleteProduct = async (productId) => {
+    if (!window.confirm('Delete this product permanently?')) return;
     try {
       await api.delete(`/admin/products/${productId}`);
       setProducts((current) => current.filter((product) => product.id !== productId));
@@ -131,8 +135,19 @@ const AdminDashboard = () => {
 
   const startEditingProduct = (product) => {
     setEditingProductId(product.id);
-    setProductForm({ name: product.name || '', price: product.price || '', stock: product.stock || '', description: product.description || '', image: product.image || '' });
+    setProductForm({ name: product.name || '', price: product.price || '', stock: product.stock || '', description: product.description || '', image: product.image || '', category_id: product.category_id || product.category?.id || '' });
     setProductMessage('');
+  };
+
+  const deleteUser = async (userId) => {
+    if (!window.confirm('Delete this customer account permanently?')) return;
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      setUsers((current) => current.filter((account) => account.id !== userId));
+      await fetchStats();
+    } catch (err) {
+      setProfileMessage(err.response?.data?.message || 'Unable to delete user.');
+    }
   };
 
   if (loading) return <div className="container section">Loading Admin Data...</div>;
@@ -237,6 +252,10 @@ const AdminDashboard = () => {
               <input type="number" min="0" placeholder="Price (NPR)" required value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} />
               <input type="number" min="0" placeholder="Stock" required value={productForm.stock} onChange={(event) => setProductForm({ ...productForm, stock: event.target.value })} />
             </div>
+            <select required value={productForm.category_id || ''} onChange={(event) => setProductForm({ ...productForm, category_id: event.target.value })}>
+              <option value="">Select category</option>
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
             <input placeholder="Image path or URL (optional)" value={productForm.image} onChange={(event) => setProductForm({ ...productForm, image: event.target.value })} />
             <textarea placeholder="Description" rows="3" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} />
             <div style={{display: 'flex', gap: '8px'}}>
@@ -265,7 +284,7 @@ const AdminDashboard = () => {
         <div className="body">
           <h3>Users</h3>
           <p style={{color: 'var(--muted)'}}>{users.length} registered account{users.length === 1 ? '' : 's'}</p>
-          <div style={{overflowX: 'auto'}}><table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse'}}><thead><tr style={{borderBottom: '2px solid var(--line)'}}><th style={{padding: '10px'}}>Name</th><th style={{padding: '10px'}}>Email</th><th style={{padding: '10px'}}>Role</th></tr></thead><tbody>{users.map((account) => <tr key={account.id} style={{borderBottom: '1px solid var(--line)'}}><td style={{padding: '10px'}}>{account.name}</td><td style={{padding: '10px'}}>{account.email}</td><td style={{padding: '10px'}}>{account.role}</td></tr>)}</tbody></table></div>
+          <div style={{overflowX: 'auto'}}><table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse'}}><thead><tr style={{borderBottom: '2px solid var(--line)'}}><th style={{padding: '10px'}}>Name</th><th style={{padding: '10px'}}>Email</th><th style={{padding: '10px'}}>Role</th><th style={{padding: '10px'}}>Actions</th></tr></thead><tbody>{users.map((account) => <tr key={account.id} style={{borderBottom: '1px solid var(--line)'}}><td style={{padding: '10px'}}>{account.name}</td><td style={{padding: '10px'}}>{account.email}</td><td style={{padding: '10px'}}>{account.role}</td><td style={{padding: '10px'}}>{account.role !== 'admin' && <button className="btn ghost" onClick={() => deleteUser(account.id)}>Delete</button>}</td></tr>)}</tbody></table></div>
         </div>
       </div>
 

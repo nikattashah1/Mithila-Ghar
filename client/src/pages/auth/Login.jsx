@@ -55,6 +55,9 @@ const Login = () => {
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
+          <div style={{marginTop: '12px', textAlign: 'center', fontSize: '14px'}}>
+            <Link to="/forgot-password" style={{color: 'var(--brand)'}}>Forgot password?</Link>
+          </div>
           <div style={{marginTop: '16px', textAlign: 'center', fontSize: '14px'}}>
              <Link to="/register" style={{color: 'var(--brand)', display: 'block', marginTop: '16px'}}>Create an account</Link>
           </div>

@@ -12,6 +12,7 @@ router.delete('/products/:id', admin.deleteProduct);
 router.get('/orders', admin.adminOrders);
 router.put('/orders/:id', admin.updateOrderStatus);
 router.get('/users', admin.adminUsers);
+router.delete('/users/:id', admin.deleteUser);
 router.get('/payments', admin.adminPayments);
 router.get('/marketing', admin.adminMarketing);
 router.get('/recommendations', admin.adminRecommendations);

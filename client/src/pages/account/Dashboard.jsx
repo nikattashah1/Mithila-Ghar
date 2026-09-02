@@ -4,9 +4,13 @@ import api from '../../services/api';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -26,6 +30,23 @@ const Dashboard = () => {
     };
     fetchOrders();
   }, [user]);
+
+  const updatePassword = async (event) => {
+    event.preventDefault();
+    setPasswordSaving(true);
+    setPasswordMessage('');
+    try {
+      const res = await api.put('/auth/me', { currentPassword, newPassword });
+      login({ ...user, ...res.data.user });
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordMessage('Password updated successfully.');
+    } catch (err) {
+      setPasswordMessage(err.response?.data?.message || 'Unable to update password.');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   if (!user) return <div className="container section">Loading your account...</div>;
 
@@ -66,6 +87,20 @@ const Dashboard = () => {
                </tbody>
              </table>
           )}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop: '24px'}}>
+        <div className="body">
+          <h3>Change Password</h3>
+          <form onSubmit={updatePassword} className="form" style={{maxWidth: '520px', marginTop: '16px'}}>
+            <label htmlFor="current-password">Current password</label>
+            <input id="current-password" type="password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+            <label htmlFor="new-password">New password</label>
+            <input id="new-password" type="password" required minLength="8" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <button className="btn" type="submit" disabled={passwordSaving}>{passwordSaving ? 'Updating...' : 'Update Password'}</button>
+            {passwordMessage && <p style={{color: passwordMessage.includes('successfully') ? 'var(--green)' : 'var(--red)'}}>{passwordMessage}</p>}
+          </form>
         </div>
       </div>
     </div>
