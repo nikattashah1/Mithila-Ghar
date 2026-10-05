@@ -13,7 +13,25 @@ const listReviews = asyncHandler(async (req, res) => {
     [productId]
   );
 
-  res.json({ reviews: reviews.map((review) => ({
+  let canReview = false;
+  if (req.user && productId) {
+    const eligibleOrder = await db.get(
+      `SELECT o.id
+       FROM orders o
+       INNER JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.user_id = ? AND oi.product_id = ?
+         AND LOWER(o.status) IN ('shipped', 'completed')
+       LIMIT 1`,
+      [req.user.id, productId]
+    );
+    const existingReview = await db.get(
+      'SELECT id FROM reviews WHERE product_id = ? AND user_id = ?',
+      [productId, req.user.id]
+    );
+    canReview = Boolean(eligibleOrder && !existingReview);
+  }
+
+  res.json({ canReview, reviews: reviews.map((review) => ({
     _id: review.id,
     id: review.id,
     rating: review.rating,
@@ -25,8 +43,12 @@ const listReviews = asyncHandler(async (req, res) => {
 
 const createReview = asyncHandler(async (req, res) => {
   const { productId, rating, comment } = req.body;
+  const numericRating = Number(rating);
   if (!productId || !rating || !comment) {
     return res.status(400).json({ message: 'Product, rating, and comment are required.' });
+  }
+  if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ message: 'Rating must be an integer from 1 to 5.' });
   }
 
   const db = await getDb();
@@ -35,31 +57,35 @@ const createReview = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Product not found.' });
   }
 
+  const deliveredOrder = await db.get(
+    `SELECT o.id
+     FROM orders o
+     INNER JOIN order_items oi ON oi.order_id = o.id
+     WHERE o.user_id = ? AND oi.product_id = ?
+       AND LOWER(o.status) IN ('shipped', 'completed')
+     ORDER BY o.updated_at DESC
+     LIMIT 1`,
+    [req.user.id, productId]
+  );
+  if (!deliveredOrder) {
+    return res.status(403).json({ message: 'You can review this product after your order has shipped.' });
+  }
+
   const existing = await db.get('SELECT id FROM reviews WHERE product_id = ? AND user_id = ?', [productId, req.user.id]);
   if (existing) {
     return res.status(400).json({ message: 'You have already reviewed this product.' });
   }
 
   const result = await db.run(
-    'INSERT INTO reviews (product_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
-    [productId, req.user.id, Number(rating), String(comment).trim()]
-  );
-
-  const stats = await db.get(
-    'SELECT AVG(rating) as avg, COUNT(*) as count FROM reviews WHERE product_id = ?',
-    [productId]
-  );
-
-  await db.run(
-    'UPDATE products SET rating = ?, review_count = ? WHERE id = ?',
-    [Number(stats.avg || 0).toFixed(1), Number(stats.count || 0), productId]
+    'INSERT INTO reviews (product_id, user_id, order_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
+    [productId, req.user.id, deliveredOrder.id, numericRating, String(comment).trim()]
   );
 
   const review = {
     id: result.lastID,
     product_id: productId,
     user_id: req.user.id,
-    rating: Number(rating),
+    rating: numericRating,
     comment: String(comment).trim(),
     created_at: new Date().toISOString()
   };

@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -23,6 +24,10 @@ const env = {
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
   smtpFrom: process.env.SMTP_FROM || 'noreply@mithilaghar.local',
+  smsMode: process.env.SMS_MODE || 'simulated',
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || '',
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || '',
+  twilioFrom: process.env.TWILIO_FROM || '',
   shippingFee: Number(process.env.SHIPPING_FEE || 150),
   freeShippingThreshold: Number(process.env.FREE_SHIPPING_THRESHOLD || 2000)
 };

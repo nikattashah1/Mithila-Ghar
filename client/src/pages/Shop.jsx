@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import SEO from '../components/common/SEO';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,6 +48,12 @@ const Shop = () => {
 
   return (
     <div className="container section shop-layout">
+      <SEO
+        title="Shop Mithila Products | Mithila Ghar"
+        description="Browse Mithila foods, Madhubani art, Terai handicrafts, ritual kits, and traditional fashion."
+        keywords="shop Mithila products, Mithila foods, Madhubani paintings, Terai crafts"
+        path="/shop"
+      />
       <aside className="filters">
         <div className="panel filter-panel">
           <h3>Filters</h3>
@@ -71,7 +78,7 @@ const Shop = () => {
             {products.map(p => (
               <div className="card product-card" key={p._id}>
                 <div className="thumb product-thumb">
-                  {p.images && p.images[0] ? <img src={p.images[0].url} alt={p.images[0].alt} /> : <div className="product-thumb-empty">No Image</div>}
+                  {p.images && p.images[0] ? <img src={p.images[0].url} alt={p.images[0].alt || p.name} /> : <div className="product-thumb-empty">No Image</div>}
                 </div>
                 <div className="body product-body">
                   {p.featured && <span className="product-tag">Featured</span>}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -22,12 +22,24 @@ import Wishlist from './pages/Wishlist';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Categories from './pages/Categories';
+import { trackEventOnce } from './services/analytics.js';
 
 const NotFound = () => <div className="container section text-center"><h2>404 Not Found</h2><p>Page does not exist.</p></div>;
+
+function AnalyticsTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackEventOnce('PageView', `${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
 
 function App() {
   return (
     <div className="app-container">
+      <AnalyticsTracker />
       <Header />
       <main className="main-content">
         <Routes>

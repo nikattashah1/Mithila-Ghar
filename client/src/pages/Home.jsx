@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../components/common/SEO';
 
 const Home = () => {
 
@@ -13,6 +14,12 @@ const Home = () => {
 
   return (
     <>
+      <SEO
+        title="Mithila Ghar | Authentic Mithila Food, Art and Handicrafts"
+        description="Shop authentic Mithila and Terai food, Madhubani art, handicrafts, and festival products from Mithila Ghar."
+        keywords="Mithila food, Madhubani art, Terai handicrafts, Chhath Puja kits"
+        path="/"
+      />
       <section className="hero home-hero">
         <div className="container home-hero-inner">
           <div className="hero-copy">

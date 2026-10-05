@@ -60,15 +60,23 @@ describe('auth', () => {
   test('login rate limits after five failed attempts', async () => {
     for (let i = 0; i < 5; i++) {
       const res = await request(app).post('/api/auth/login').send({
-        email: 'customer1@mithilaghar.local',
+        email: 'rate-limit-test@mithilaghar.local',
         password: 'wrong-password'
       });
-      if (i < 4) {
-        assert.equal(res.status, 401);
-      } else {
-        assert.equal(res.status, 429);
-      }
+      assert.equal(res.status, 401);
     }
+
+    const blocked = await request(app).post('/api/auth/login').send({
+      email: 'rate-limit-test@mithilaghar.local',
+      password: 'wrong-password'
+    });
+    assert.equal(blocked.status, 429);
+
+    const otherAccount = await request(app).post('/api/auth/login').send({
+      email: 'customer1@mithilaghar.local',
+      password: DEMO_PASSWORD
+    });
+    assert.equal(otherAccount.status, 200);
   });
 
   test('unauthorized access is rejected', async () => {

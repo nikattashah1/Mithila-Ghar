@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator, rateLimit } = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const env = require('./config/env');
 const authRoutes = require('./routes/authRoutes');
@@ -42,15 +42,24 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
-const authLimiter = rateLimit({
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.nodeEnv === 'test' ? 5 : 5,
+  max: 5,
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    return email || ipKeyGenerator(req.ip);
+  },
+  message: { message: 'Too many authentication attempts. Please try again in 15 minutes.' }
+});
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: { message: 'Too many authentication attempts. Please try again in 15 minutes.' }
 });
 
 app.use('/api', generalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/register', registerLimiter);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, name: 'Mithila Ghar API', testMode: true });

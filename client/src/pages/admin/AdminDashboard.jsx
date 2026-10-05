@@ -13,6 +13,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [orderStatusDrafts, setOrderStatusDrafts] = useState({});
+  const [orderMessage, setOrderMessage] = useState('');
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
@@ -67,16 +69,22 @@ const AdminDashboard = () => {
     fetchAdminData();
   }, []);
 
-  const updateOrderStatus = async (orderId, status) => {
+  const updateOrderStatus = async (orderId) => {
+    const status = orderStatusDrafts[orderId];
+    if (!status) return;
     setUpdatingOrderId(orderId);
+    setOrderMessage('');
     try {
       const res = await api.put(`/admin/orders/${orderId}`, { status });
       setOrders((currentOrders) => currentOrders.map((order) => (
         order.id === orderId ? res.data.order : order
       )));
+      setOrderStatusDrafts((drafts) => ({ ...drafts, [orderId]: res.data.order.status }));
+      setOrderMessage(`Order ${res.data.order.order_number} saved successfully.`);
       await fetchStats();
     } catch (err) {
       console.error(err);
+      setOrderMessage(err.response?.data?.message || 'Unable to save order status.');
       await fetchOrders();
     } finally {
       setUpdatingOrderId(null);
@@ -222,23 +230,34 @@ const AdminDashboard = () => {
                      <td style={{padding: '12px'}}>{order.shipping_name}</td>
                      <td style={{padding: '12px'}}>{order.shipping_email}</td>
                      <td style={{padding: '12px'}}>NPR {order.total}</td>
-                     <td style={{padding: '12px'}}>
+                     <td style={{padding: '12px', minWidth: '220px'}}>
                        <select
-                         value={order.status || 'pending'}
+                         value={orderStatusDrafts[order.id] ?? order.status ?? 'pending'}
                          disabled={updatingOrderId === order.id}
-                         onChange={(event) => updateOrderStatus(order.id, event.target.value)}
+                         onChange={(event) => setOrderStatusDrafts((drafts) => ({ ...drafts, [order.id]: event.target.value }))}
                        >
                          <option value="pending">Pending</option>
+                         <option value="confirmed">Confirmed</option>
                          <option value="processing">Processing</option>
                          <option value="shipped">Shipped</option>
                          <option value="completed">Completed</option>
                          <option value="cancelled">Cancelled</option>
                        </select>
+                       <button
+                         className="btn ghost"
+                         type="button"
+                         style={{marginLeft: '8px'}}
+                         disabled={updatingOrderId === order.id || (orderStatusDrafts[order.id] ?? order.status) === order.status}
+                         onClick={() => updateOrderStatus(order.id)}
+                       >
+                         {updatingOrderId === order.id ? 'Saving...' : 'Save Changes'}
+                       </button>
                      </td>
                    </tr>
                  ))}
                </tbody>
              </table>
+             {orderMessage && <p style={{color: orderMessage.includes('successfully') ? 'var(--green)' : 'var(--red)', marginTop: '12px'}}>{orderMessage}</p>}
            </div>
          )}
       </div>

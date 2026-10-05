@@ -12,5 +12,7 @@ uploads/
 server/.env
 client/.env
 client/.env.local
+client/localhost.pem
+client/localhost-key.pem
 .mongodb-memory-server/
 data/mongo/

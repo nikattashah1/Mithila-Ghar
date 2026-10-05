@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import SEO from '../components/common/SEO';
 
 const Contact = () => {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
@@ -19,6 +20,12 @@ const Contact = () => {
 
   return (
     <div className="container section" style={{maxWidth: '600px', margin: '0 auto'}}>
+      <SEO
+        title="Contact Mithila Ghar | Customer Support"
+        description="Contact Mithila Ghar for questions about authentic Mithila products, orders, delivery, and cultural goods."
+        keywords="contact Mithila Ghar, Mithila product support, Terai shopping help"
+        path="/contact"
+      />
       <h1 style={{textAlign: 'center', marginBottom: '32px'}}>Contact Us</h1>
       
       <div className="card" style={{padding: '32px', border: 'none'}}>

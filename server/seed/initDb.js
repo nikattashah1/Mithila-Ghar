@@ -198,6 +198,40 @@ async function initializeDatabase() {
       UNIQUE(product_id, user_id)
     );
   `);
+
+  await db.exec(`
+    UPDATE categories
+    SET image = CASE image
+      WHEN '/images/categories/foods.svg' THEN '/images/categories/foods.jpg'
+      WHEN '/images/categories/art.svg' THEN '/images/categories/art.jpg'
+      WHEN '/images/categories/handicrafts.svg' THEN '/images/categories/handicrafts.jpg'
+      WHEN '/images/categories/ritual.svg' THEN '/images/categories/ritual.jpg'
+      WHEN '/images/categories/fashion.svg' THEN '/images/categories/fashion.jpg'
+      ELSE image
+    END
+    WHERE image LIKE '/images/categories/%.svg';
+
+    UPDATE products
+    SET image = CASE slug
+      WHEN 'aamot-amat-mithila-mango-preserve' THEN '/images/products/aamot-amat-mithila-mango-preserve.jpg'
+      WHEN 'arikanchan-traditional-mithila-food' THEN '/images/products/arikanchan-traditional-mithila-food.jpg'
+      WHEN 'fulauri-mithila-rice-crackers' THEN '/images/products/fulauri-mithila-rice-crackers.jpg'
+      WHEN 'khajuri-traditional-mithila-snack' THEN '/images/products/traditional-khajuri.jpg'
+      WHEN 'masyaura-traditional-mithila-dried-vegetable' THEN '/images/products/masyaura-traditional-mithila-dried-vegetable.jpg'
+      WHEN 'thekuwa-traditional-mithila-sweet' THEN '/images/products/thekuwa-traditional-mithila-sweet.jpg'
+      WHEN 'tilauri-traditional-mithila-sesame-snack' THEN '/images/products/tilauri-traditional-mithila-sesame-snack.jpg'
+      WHEN 'mithila-madhubani-painting' THEN '/images/products/mithila-madhubani-painting.jpg'
+      WHEN 'mithila-traditional-wall-art' THEN '/images/products/mithila-traditional-wall-art.jpg'
+      WHEN 'handmade-sikki-basket' THEN '/images/products/handmade-sikki-basket.jpg'
+      WHEN 'traditional-mithila-bamboo-craft' THEN '/images/products/traditional-mithila-bamboo-craft.jpg'
+      WHEN 'chhath-puja-samagri-kit' THEN '/images/products/chhath-puja-samagri-kit.jpg'
+      WHEN 'mithila-wedding-samagri-kit' THEN '/images/products/wedding-kit.jpg'
+      WHEN 'taste-of-mithila-gift-box' THEN '/images/products/mithila-gift-box.jpg'
+      WHEN 'mithila-painted-saree' THEN '/images/products/painted-mithila-saree.jpg'
+      ELSE image
+    END
+    WHERE image LIKE '/images/products/%.svg';
+  `);
   
   console.log('SQLite schema initialized successfully.');
 }

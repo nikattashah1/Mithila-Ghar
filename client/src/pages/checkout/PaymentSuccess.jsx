@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import api from '../../services/api';
+import { trackEventOnce } from '../../services/analytics.js';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const payment = searchParams.get('payment');
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    let active = true;
+    const trackPurchase = async () => {
+      try {
+        const response = await api.get(`/orders/${orderId}`);
+        const order = response.data.order;
+        if (!active || !order) return;
+
+        trackEventOnce('Purchase', String(order.id || order._id || orderId), {
+          content_ids: (order.orderItems || []).map((item) => String(item.product)).filter(Boolean),
+          content_type: 'product',
+          value: Number(order.total || 0),
+          currency: 'NPR',
+          order_id: String(order.id || order._id || orderId),
+          payment_method: payment || order.paymentMethod || 'unknown'
+        });
+      } catch (error) {
+        console.error('Unable to load completed order for analytics:', error);
+      }
+    };
+
+    trackPurchase();
+    return () => { active = false; };
+  }, [orderId, payment]);
 
   return (
     <div className="container section text-center" style={{padding: '80px 0'}}>

@@ -80,6 +80,10 @@ async function sendOrderPlacedEmail(order = {}) {
   const recipientName = order.shipping_name || order.name || 'Customer';
   const orderNumber = order.order_number || order.orderNumber || order.id || 'N/A';
   const total = Number(order.total ?? order.amount ?? 0);
+  const paymentConfirmed = String(order.payment_status || '').toLowerCase() === 'completed';
+  const paymentMessage = paymentConfirmed
+    ? 'Your payment has been confirmed and your order is being prepared for dispatch.'
+    : 'We have received your order and it is awaiting payment confirmation.';
 
   if (!to) {
     return { sent: false, reason: 'No shipping email found for this order.' };
@@ -90,7 +94,7 @@ async function sendOrderPlacedEmail(order = {}) {
     `Hello ${recipientName},`,
     '',
     `Your order ${orderNumber} has been placed successfully.`,
-    'We have received your payment and your order is being prepared for dispatch.',
+    paymentMessage,
     `Total amount: NPR ${Number.isFinite(total) ? total.toFixed(2) : '0.00'}`,
     '',
     'We will ship it to you soon and keep you updated on the delivery status.',
@@ -102,9 +106,40 @@ async function sendOrderPlacedEmail(order = {}) {
       <h2 style="color: #7c3aed;">Order Confirmation</h2>
       <p>Hello ${recipientName},</p>
       <p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p>
-      <p>We have received your payment and your order is being prepared for dispatch.</p>
+      <p>${paymentMessage}</p>
       <p><strong>Total amount:</strong> NPR ${Number.isFinite(total) ? total.toFixed(2) : '0.00'}</p>
       <p>We will ship it to you soon and keep you updated on the delivery status.</p>
+      <p>Thank you for shopping with Mithila Ghar.</p>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, text, html });
+}
+
+async function sendOrderConfirmedEmail(order = {}) {
+  const to = order.shipping_email || order.email || order.customer_email;
+  const recipientName = order.shipping_name || order.name || 'Customer';
+  const orderNumber = order.order_number || order.orderNumber || order.id || 'N/A';
+
+  if (!to) {
+    return { sent: false, reason: 'No shipping email found for this order.' };
+  }
+
+  const subject = `Your order ${orderNumber} has been confirmed`;
+  const text = [
+    `Hello ${recipientName},`,
+    '',
+    `Your order ${orderNumber} has been confirmed and is now being prepared.`,
+    'We will send another email when it ships.',
+    '',
+    'Thank you for shopping with Mithila Ghar.'
+  ].join('\n');
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+      <h2 style="color: #7c3aed;">Order Confirmed</h2>
+      <p>Hello ${recipientName},</p>
+      <p>Your order <strong>${orderNumber}</strong> has been confirmed and is now being prepared.</p>
+      <p>We will send another email when it ships.</p>
       <p>Thank you for shopping with Mithila Ghar.</p>
     </div>
   `;
@@ -118,6 +153,8 @@ async function sendShippingConfirmationEmail(order = {}) {
   const orderNumber = order.order_number || order.orderNumber || order.id || 'N/A';
   const total = Number(order.total ?? order.amount ?? 0);
   const status = order.status || 'Shipped';
+  const products = Array.isArray(order.products) ? order.products.filter((product) => product.slug) : [];
+  const reviewLinks = products.map((product) => `${product.name}: ${env.clientUrl}/product/${product.slug}`);
 
   if (!to) {
     return { sent: false, reason: 'No shipping email found for this order.' };
@@ -130,6 +167,9 @@ async function sendShippingConfirmationEmail(order = {}) {
     `Your order ${orderNumber} has been marked as ${status}.`,
     `Total amount: NPR ${Number.isFinite(total) ? total.toFixed(2) : '0.00'}`,
     '',
+    'After your order arrives, you can write a review here:',
+    ...reviewLinks,
+    '',
     'Thank you for shopping with Mithila Ghar.',
     'We will keep you updated on the delivery status.'
   ].join('\n');
@@ -140,6 +180,7 @@ async function sendShippingConfirmationEmail(order = {}) {
       <p>Hello ${recipientName},</p>
       <p>Your order <strong>${orderNumber}</strong> has been marked as <strong>${status}</strong>.</p>
       <p><strong>Total amount:</strong> NPR ${Number.isFinite(total) ? total.toFixed(2) : '0.00'}</p>
+      ${reviewLinks.length ? `<p>After your order arrives, write a review:<br>${products.map((product) => `<a href="${env.clientUrl}/product/${product.slug}">${product.name}</a>`).join('<br>')}</p>` : ''}
       <p>Thank you for shopping with Mithila Ghar.</p>
     </div>
   `;
@@ -189,6 +230,7 @@ async function sendPasswordResetEmail({ email, name, resetUrl }) {
 module.exports = {
   sendEmail,
   sendOrderPlacedEmail,
+  sendOrderConfirmedEmail,
   sendShippingConfirmationEmail,
   sendContactMessageEmail,
   sendRestockNotificationEmail,

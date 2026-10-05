@@ -1,8 +1,15 @@
 import React from 'react';
+import SEO from '../components/common/SEO';
 
 const About = () => {
   return (
     <div className="container section" style={{maxWidth: '800px', margin: '0 auto'}}>
+      <SEO
+        title="About Mithila Ghar | Mithila Culture and Craft"
+        description="Learn how Mithila Ghar supports Terai artisans and shares authentic Mithila food, art, crafts, and ritual products."
+        keywords="about Mithila Ghar, Mithila culture, Terai artisans, Madhubani crafts"
+        path="/about"
+      />
       <h1 style={{textAlign: 'center', marginBottom: '32px'}}>About Mithila Ghar</h1>
       
       <div className="card" style={{padding: '32px', border: 'none'}}>

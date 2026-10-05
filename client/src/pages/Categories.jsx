@@ -1,17 +1,24 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../components/common/SEO';
 
 const Categories = () => {
   const cats = [
-    { name: 'Mithila Foods', slug: 'mithila-foods', img: '/images/categories/foods.svg' },
-    { name: 'Mithila Art', slug: 'mithila-art', img: '/images/categories/art.svg' },
-    { name: 'Handicrafts', slug: 'handicrafts', img: '/images/categories/handicrafts.svg' },
-    { name: 'Ritual & Festival Kits', slug: 'ritual-festival-kits', img: '/images/categories/ritual.svg' },
-    { name: 'Fashion', slug: 'fashion', img: '/images/categories/fashion.svg' },
+    { name: 'Mithila Foods', slug: 'mithila-foods', img: '/images/categories/foods.jpg' },
+    { name: 'Mithila Art', slug: 'mithila-art', img: '/images/categories/art.jpg' },
+    { name: 'Handicrafts', slug: 'handicrafts', img: '/images/categories/handicrafts.jpg' },
+    { name: 'Ritual & Festival Kits', slug: 'ritual-festival-kits', img: '/images/categories/ritual.jpg' },
+    { name: 'Fashion', slug: 'fashion', img: '/images/categories/fashion.jpg' },
   ];
 
   return (
     <div className="container section">
+       <SEO
+         title="Mithila Product Categories | Mithila Ghar"
+         description="Explore Mithila foods, art, handicrafts, ritual and festival kits, and traditional fashion."
+         keywords="Mithila categories, Mithila food, Madhubani art, festival kits"
+         path="/categories"
+       />
        <h1 style={{textAlign: 'center', marginBottom: '48px'}}>All Categories</h1>
        <div className="grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px'}}>
           {cats.map(c => (

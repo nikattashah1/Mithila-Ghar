@@ -9,31 +9,32 @@ const categories = [
     name: 'Mithila Foods',
     slug: 'mithila-foods',
     description: 'Festive sweets, pickles, and traditional snacks from Mithila kitchens.',
-    image: '/images/categories/foods.svg'
+    image: '/images/categories/foods.jpg'
   },
   {
     name: 'Mithila Art',
     slug: 'mithila-art',
     description: 'Madhubani and Mithila paintings featuring peacocks, trees of life, and ritual motifs.',
-    image: '/images/categories/art.svg'
+    image: '/images/categories/art.jpg'
   },
+
   {
     name: 'Handicrafts',
     slug: 'handicrafts',
     description: 'Handmade baskets, home decor, and artisan objects.',
-    image: '/images/categories/handicrafts.svg'
+    image: '/images/categories/handicrafts.jpg'
   },
   {
     name: 'Ritual & Festival Kits',
     slug: 'ritual-festival-kits',
     description: 'Prepared kits for Chhath, pujas, and seasonal festivals.',
-    image: '/images/categories/ritual.svg'
+    image: '/images/categories/ritual.jpg'
   },
   {
     name: 'Fashion',
     slug: 'fashion',
     description: 'Sarees, scarves, and clothing with Mithila patterns.',
-    image: '/images/categories/fashion.svg'
+    image: '/images/categories/fashion.jpg'
   }
 ];
 
@@ -77,7 +78,7 @@ const productsData = [
   },
   {
     name: 'Khajuri – Traditional Mithila Snack',
-    slug: 'traditional-khajuri',
+    slug: 'khajuri-traditional-mithila-snack',
     categorySlug: 'mithila-foods',
     description: 'Traditional sweet snack commonly served during festivals and tea time.',
     usage_instructions: 'Store in airtight container. Enjoy with tea.',
@@ -240,7 +241,7 @@ async function seedDatabase({ quiet = false } = {}) {
   await db.exec('DELETE FROM categories');
   await db.exec('DELETE FROM wallets');
   await db.exec('DELETE FROM users');
-  
+
   // Seed Users
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const usersToInsert = [
@@ -250,7 +251,7 @@ async function seedDatabase({ quiet = false } = {}) {
     ['Wallet User One', 'walletuser1@mithilaghar.local', passwordHash, 'customer'],
     ['Wallet User Two', 'walletuser2@mithilaghar.local', passwordHash, 'customer']
   ];
-  
+
   const userMap = {};
   for (const u of usersToInsert) {
     const res = await db.run(
@@ -284,7 +285,7 @@ async function seedDatabase({ quiet = false } = {}) {
   const w2Res = await db.run('INSERT INTO wallets (user_id, balance, currency) VALUES (?, ?, ?)', [userMap['walletuser2@mithilaghar.local'], 1000, 'NPR']);
   await db.run('INSERT INTO wallets (user_id, balance, currency) VALUES (?, ?, ?)', [userMap['customer1@mithilaghar.local'], 500, 'NPR']);
   await db.run('INSERT INTO wallets (user_id, balance, currency) VALUES (?, ?, ?)', [userMap['customer2@mithilaghar.local'], 500, 'NPR']);
-  
+
   // Seed Wallet Transactions
   await db.run(
     `INSERT INTO wallet_transactions (wallet_id, receiver_user_id, type, amount, reference, status, description) 

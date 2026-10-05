@@ -7,7 +7,10 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { CartProvider } from './context/CartContext.jsx';
 import { WishlistProvider } from './context/WishlistContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
+import { initMetaPixel } from './services/analytics.js';
 import './styles/global.css';
+
+initMetaPixel();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

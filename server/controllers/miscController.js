@@ -1,4 +1,5 @@
 const { getDb } = require('../config/db');
+const env = require('../config/env');
 const asyncHandler = require('../utils/asyncHandler');
 const validator = require('validator');
 const { sendContactMessageEmail } = require('../services/emailService');
@@ -34,12 +35,58 @@ const trackEvent = asyncHandler(async (req, res) => {
 
 const recommendations = asyncHandler(async (req, res) => {
   const db = await getDb();
-  const products = await db.all(
-    'SELECT * FROM products WHERE active = 1 ORDER BY featured DESC, created_at DESC LIMIT 4'
+  const currentProductId = Number(req.query.productId) || null;
+  const currentProduct = currentProductId
+    ? await db.get('SELECT category_id FROM products WHERE id = ?', [currentProductId])
+    : null;
+  const purchasedCategories = new Set();
+
+  if (req.user) {
+    const purchasedRows = await db.all(
+      `SELECT DISTINCT products.category_id
+       FROM order_items
+       JOIN orders ON orders.id = order_items.order_id
+       JOIN products ON products.id = order_items.product_id
+       WHERE orders.user_id = ? AND orders.payment_status IN ('completed', 'paid')`,
+      [req.user.id]
+    );
+    purchasedRows.forEach((row) => purchasedCategories.add(String(row.category_id)));
+  }
+
+  const candidates = await db.all(
+    `SELECT products.*, categories.name AS category_name, categories.slug AS category_slug
+     FROM products
+     LEFT JOIN categories ON categories.id = products.category_id
+     WHERE products.active = 1
+     ORDER BY products.featured DESC, products.created_at DESC`
   );
+  const ranked = candidates
+    .filter((product) => product.id !== currentProductId)
+    .map((product) => {
+      const reasons = [];
+      let score = product.featured ? 2 : 0;
+      const categoryId = String(product.category_id);
+
+      if (currentProduct?.category_id && categoryId === String(currentProduct.category_id)) {
+        score += 8;
+        reasons.push('Related to this product category');
+      }
+      if (purchasedCategories.has(categoryId)) {
+        score += 15;
+        reasons.unshift('Recommended based on your purchases');
+      }
+      if (product.featured) reasons.push('Featured in the shop');
+
+      return { product, score, reason: reasons[0] || 'Popular at Mithila Ghar' };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, Math.min(8, Math.max(1, Number(req.query.limit) || 4)));
 
   res.json({
-    products: products.map((product) => ({
+    explanation: req.user
+      ? 'Recommendations use your paid purchase categories and the current product category.'
+      : 'Guest recommendations use the current product category and featured products.',
+    products: ranked.map(({ product, score, reason }) => ({
       _id: product.id,
       id: product.id,
       name: product.name,
@@ -47,8 +94,10 @@ const recommendations = asyncHandler(async (req, res) => {
       price: product.price,
       description: product.description,
       image: product.image,
-      images: [{ url: product.image }],
-      category: null
+      images: [{ url: product.image, alt: product.name }],
+      category: { id: product.category_id, name: product.category_name, slug: product.category_slug },
+      score,
+      recommendationReason: reason
     }))
   });
 });
@@ -94,13 +143,42 @@ const configPublic = asyncHandler(async (req, res) => {
 const submitContact = contact;
 
 const sitemap = asyncHandler(async (req, res) => {
+  const db = await getDb();
+  const [categories, products] = await Promise.all([
+    db.all('SELECT slug FROM categories ORDER BY slug ASC'),
+    db.all('SELECT slug FROM products WHERE active = 1 ORDER BY slug ASC')
+  ]);
+  const requestHost = req.get('x-forwarded-host') || req.get('host');
+  const requestProtocol = req.get('x-forwarded-proto') || req.protocol;
+  const baseUrl = requestHost && !requestHost.startsWith('localhost')
+    ? `${requestProtocol}://${requestHost}`
+    : env.clientUrl.replace(/\/$/, '');
+  const urls = [
+    `${baseUrl}/`,
+    `${baseUrl}/shop`,
+    `${baseUrl}/categories`,
+    ...categories.map(({ slug }) => `${baseUrl}/shop?category=${encodeURIComponent(slug)}`),
+    ...products.map(({ slug }) => `${baseUrl}/product/${encodeURIComponent(slug)}`)
+  ];
+  const escapeXml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+  const entries = urls.map((url) => `<url><loc>${escapeXml(url)}</loc></url>`).join('');
   res.type('application/xml');
-  res.send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}</urlset>`);
 });
 
 const robots = (req, res) => {
   res.type('text/plain');
-  res.send('User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nAllow: /');
+  const requestHost = req.get('x-forwarded-host') || req.get('host');
+  const requestProtocol = req.get('x-forwarded-proto') || req.protocol;
+  const baseUrl = requestHost && !requestHost.startsWith('localhost')
+    ? `${requestProtocol}://${requestHost}`
+    : env.clientUrl.replace(/\/$/, '');
+  res.send(`User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml`);
 };
 
 module.exports = { subscribe, trackEvent, recommendations, contact, configPublic, submitContact, sitemap, robots };

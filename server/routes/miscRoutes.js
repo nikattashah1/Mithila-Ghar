@@ -5,7 +5,7 @@ const { subscribe, trackEvent, recommendations, contact, configPublic } = requir
 const { protect, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
-router.get('/reviews', listReviews);
+router.get('/reviews', optionalAuth, listReviews);
 router.post('/reviews', protect, createReview);
 router.get('/wishlist', protect, getWishlist);
 router.post('/wishlist', protect, addToWishlist);

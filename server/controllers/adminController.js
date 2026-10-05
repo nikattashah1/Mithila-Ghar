@@ -1,6 +1,7 @@
 const { getDb } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
-const { sendShippingConfirmationEmail, shouldSendShippingEmail, sendRestockNotificationEmail } = require('../services/emailService');
+const { sendShippingConfirmationEmail, sendOrderConfirmedEmail, shouldSendShippingEmail, sendRestockNotificationEmail } = require('../services/emailService');
+const { sendOrderConfirmedSms, sendOrderShippedSms } = require('../services/smsService');
 
 const dashboard = asyncHandler(async (req, res) => {
   const db = await getDb();
@@ -157,10 +158,11 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   const nextStatusValue = incomingStatus ?? orderStatus;
   const previousStatus = order.status;
   let emailResult = null;
+  let smsResult = null;
 
   if (nextStatusValue) {
     const nextStatus = String(nextStatusValue).trim();
-    const allowedStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
+    const allowedStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'completed', 'cancelled'];
     if (!allowedStatuses.includes(nextStatus.toLowerCase())) {
       return res.status(400).json({ message: 'Invalid order status.' });
     }
@@ -171,15 +173,41 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       await db.run('UPDATE payments SET status = ? WHERE order_id = ?', ['completed', req.params.id]);
     }
 
+    const shouldSendConfirmation = ['confirmed', 'processing'].includes(nextStatus.toLowerCase())
+      && !['confirmed', 'processing'].includes(String(previousStatus || '').toLowerCase());
     const shouldSend = shouldSendShippingEmail(nextStatus) && !shouldSendShippingEmail(previousStatus);
 
+    if (shouldSendConfirmation) {
+      emailResult = await sendOrderConfirmedEmail({
+        shipping_email: order.shipping_email,
+        shipping_name: order.shipping_name,
+        order_number: order.order_number
+      });
+      smsResult = await sendOrderConfirmedSms({
+        shipping_phone: order.shipping_phone,
+        order_number: order.order_number
+      });
+    }
+
     if (shouldSend) {
+      const products = await db.all(
+        `SELECT p.name, p.slug
+         FROM order_items oi
+         LEFT JOIN products p ON p.id = oi.product_id
+         WHERE oi.order_id = ?`,
+        [req.params.id]
+      );
       emailResult = await sendShippingConfirmationEmail({
         shipping_email: order.shipping_email,
         shipping_name: order.shipping_name,
         order_number: order.order_number,
         total: order.total,
-        status: nextStatus
+        status: nextStatus,
+        products
+      });
+      smsResult = await sendOrderShippedSms({
+        shipping_phone: order.shipping_phone,
+        order_number: order.order_number
       });
     }
   }
@@ -187,7 +215,8 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   const updated = await db.get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
   res.json({
     order: updated,
-    email: emailResult || null
+    email: emailResult || null,
+    sms: smsResult || null
   });
 });
 

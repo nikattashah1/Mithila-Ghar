@@ -3,6 +3,7 @@ const { getDb } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const env = require('../config/env');
 const { sendOrderPlacedEmail } = require('../services/emailService');
+const { sendOrderPlacedSms } = require('../services/smsService');
 
 function generateOrderNumber() {
   return `MG-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -71,7 +72,7 @@ const processCheckout = asyncHandler(async (req, res) => {
     const orderResult = await db.run(
       `INSERT INTO orders (user_id, order_number, subtotal, shipping, total, status, payment_status, payment_method, shipping_name, shipping_email, shipping_phone, shipping_address)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, orderNumber, subtotal, shipping, total, 'processing', paymentStatus, paymentMethod,
+      [req.user.id, orderNumber, subtotal, shipping, total, 'pending', paymentStatus, paymentMethod,
        shippingDetails.name, shippingDetails.email, shippingDetails.phone, shippingDetails.address]
     );
     const orderId = orderResult.lastID;
@@ -106,11 +107,16 @@ const processCheckout = asyncHandler(async (req, res) => {
         shipping_name: shippingDetails.name,
         order_number: orderNumber,
         total,
+        payment_status: paymentStatus,
         status: 'Placed'
       });
     } catch (mailError) {
       console.error('Failed to send order placement email:', mailError);
     }
+    await sendOrderPlacedSms({
+      shipping_phone: shippingDetails.phone,
+      order_number: orderNumber
+    });
 
     res.status(201).json({ message: 'Order created', orderId, orderNumber });
   } catch (err) {
@@ -229,11 +235,16 @@ const handleEsewaSuccess = asyncHandler(async (req, res) => {
           shipping_name: order.shipping_name,
           order_number: order.order_number,
           total: order.total,
+          payment_status: order.payment_status,
           status: 'Placed'
         });
       } catch (mailError) {
         console.error('Failed to send eSewa order confirmation email:', mailError);
       }
+      await sendOrderPlacedSms({
+        shipping_phone: order.shipping_phone,
+        order_number: order.order_number
+      });
     }
   }
 
